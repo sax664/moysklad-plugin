@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Разделение заказа</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 10px;
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Разделение заказа между поставщиками</h1>
+    <div id="app">
+        <label for="supplier1">Поставщик 1:</label>
+        <input type="text" id="supplier1" placeholder="ID поставщика">
+        <label for="product1">Товар 1:</label>
+        <input type="text" id="product1" placeholder="ID товара">
+        <label for="quantity1">Количество:</label>
+        <input type="number" id="quantity1" placeholder="Количество">
+
+        <label for="supplier2">Поставщик 2:</label>
+        <input type="text" id="supplier2" placeholder="ID поставщика">
+        <label for="product2">Товар 2:</label>
+        <input type="text" id="product2" placeholder="ID товара">
+        <label for="quantity2">Количество:</label>
+        <input type="number" id="quantity2" placeholder="Количество">
+
+        <button onclick="createOrders()">Создать заказы</button>
+    </div>
+
+    <script>
+        const API_URL = "https://api.moysklad.ru/api/remap/1.2";
+        const AUTH_TOKEN = "Basic " + btoa("your_login:your_password"); // Замените на свои данные
+
+        async function createOrders() {
+            const supplier1 = document.getElementById("supplier1").value;
+            const product1 = document.getElementById("product1").value;
+            const quantity1 = document.getElementById("quantity1").value;
+
+            const supplier2 = document.getElementById("supplier2").value;
+            const product2 = document.getElementById("product2").value;
+            const quantity2 = document.getElementById("quantity2").value;
+
+            const suppliersItems = {
+                [supplier1]: [
+                    {
+                        quantity: parseInt(quantity1),
+                        assortment: {
+                            meta: {
+                                href: `${API_URL}/entity/product/${product1}`,
+                                type: "product",
+                                mediaType: "application/json"
+                            }
+                        }
+                    }
+                ],
+                [supplier2]: [
+                    {
+                        quantity: parseInt(quantity2),
+                        assortment: {
+                            meta: {
+                                href: `${API_URL}/entity/product/${product2}`,
+                                type: "product",
+                                mediaType: "application/json"
+                            }
+                        }
+                    }
+                ]
+            };
+
+            for (const [supplierId, items] of Object.entries(suppliersItems)) {
+                try {
+                    const response = await fetch(`${API_URL}/entity/customerorder`, {
+                        method: "POST",
+                        headers: {
+                            "Authorization": AUTH_TOKEN,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            organization: {
+                                meta: {
+                                    href: `${API_URL}/entity/organization/your_organization_id`, // Замените на ID вашей организации
+                                    type: "organization",
+                                    mediaType: "application/json"
+                                }
+                            },
+                            agent: {
+                                meta: {
+                                    href: `${API_URL}/entity/counterparty/${supplierId}`,
+                                    type: "counterparty",
+                                    mediaType: "application/json"
+                                }
+                            },
+                            positions: items
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log(`Заказ для поставщика ${supplierId} создан:`, data);
+                        alert(`Заказ для поставщика ${supplierId} успешно создан!`);
+                    } else {
+                        console.error(`Ошибка при создании заказа для поставщика ${supplierId}:`, await response.text());
+                        alert(`Ошибка при создании заказа для поставщика ${supplierId}.`);
+                    }
+                } catch (error) {
+                    console.error(`Ошибка при создании заказа для поставщика ${supplierId}:`, error);
+                    alert(`Ошибка при создании заказа для поставщика ${supplierId}.`);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
